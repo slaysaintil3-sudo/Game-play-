@@ -5,21 +5,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MONEYHTG PRO - Withdraw</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:20px;background:#080d1b;color:white;font-family:Arial}
+body{
+ margin:0;padding:20px;background:#080d1b;
+ color:white;font-family:Arial,sans-serif
+}
 .container{max-width:520px;margin:auto}
-.card{background:#121d32;padding:20px;border-radius:16px;margin-bottom:18px;border:1px solid #253652}
+.card{
+ background:#121d32;padding:20px;border-radius:16px;
+ margin-bottom:18px;border:1px solid #253652
+}
 h2{color:#27e6a0}
-.balance{background:linear-gradient(135deg,#087b63,#123e70);padding:20px;border-radius:15px;font-size:25px;font-weight:bold}
-input,select{width:100%;padding:14px;margin:9px 0;background:#081326;color:white;border:1px solid #354968;border-radius:9px;font-size:15px}
-button{width:100%;padding:14px;border:0;border-radius:10px;background:#16c995;color:#061a17;font-weight:bold;margin-top:10px;font-size:15px}
+.balance{
+ background:linear-gradient(135deg,#087b63,#123e70);
+ padding:20px;border-radius:15px;font-size:25px;font-weight:bold
+}
+input,select{
+ width:100%;padding:14px;margin:9px 0;background:#081326;
+ color:white;border:1px solid #354968;border-radius:9px;
+ font-size:15px
+}
+button{
+ width:100%;padding:14px;border:0;border-radius:10px;
+ background:#16c995;color:#061a17;font-weight:bold;
+ margin-top:10px;font-size:15px
+}
+button:disabled{opacity:.45}
 .secondary{background:#263a57;color:white}
 .small{color:#aab8cc;font-size:13px}
-.item{background:#192944;padding:12px;border-radius:10px;margin-top:10px;font-size:14px}
+.item{
+ background:#192944;padding:12px;border-radius:10px;
+ margin-top:10px;font-size:14px
+}
 #message{color:#ffcc70;margin-top:12px}
+.notice{
+ background:#382b16;color:#ffdb91;padding:12px;
+ border-radius:10px;margin-top:12px;font-size:14px
+}
 </style>
 </head>
+
 <body>
 <div class="container">
 
@@ -38,8 +65,13 @@ button{width:100%;padding:14px;border:0;border-radius:10px;background:#16c995;co
 <div class="card">
 <h2>📤 Fè retrè</h2>
 
+<div id="activeNotice" class="notice" hidden>
+Ou deja gen yon demann aktif. Tann Admin fin trete li anvan ou fè yon lòt demann.
+</div>
+
 <label>Montan (HTG)</label>
-<input id="amount" type="number" min="1" placeholder="Antre montan an">
+<input id="amount" type="number" min="1" step="1"
+placeholder="Antre montan an">
 
 <label>Metòd peman</label>
 <select id="method">
@@ -50,9 +82,19 @@ button{width:100%;padding:14px;border:0;border-radius:10px;background:#16c995;co
 <label>Nimewo telefòn</label>
 <input id="phone" type="tel" placeholder="Antre nimewo telefòn ou">
 
-<button id="submitBtn" onclick="sendRequest()">Voye demann retrè</button>
+<button id="submitBtn" onclick="sendRequest">
+Voye demann retrè
+</button>
+
 <div id="message"></div>
-<p class="small">Demann ou ap tann verifikasyon Admin. Demann lan pa vle di peman an deja fèt.</p>
+<p class="small">
+Demann ou ap tann verifikasyon Admin. Demann lan pa vle di peman an deja fèt.
+</p>
+</div>
+
+<div class="card">
+<h2>📋 Demann aktif</h2>
+<div id="activeDetails" class="small">Ap chaje...</div>
 </div>
 
 <div class="card">
@@ -67,162 +109,203 @@ import {initializeApp}
 from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 
 import {
-getAuth,onAuthStateChanged
+ getAuth,onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
 
 import {
-getDatabase,ref,get,push,set,onValue
+ getDatabase,ref,get,set,onValue
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-database.js";
 
 const firebaseConfig={
-apiKey:"AIzaSyB7AZhLGZa7kE4qKbmbDBifU9nIwrM3Cgw",
-authDomain:"moneyhtg-60729.firebaseapp.com",
-databaseURL:"https://moneyhtg-60729-default-rtdb.firebaseio.com",
-projectId:"moneyhtg-60729",
-storageBucket:"moneyhtg-60729.firebasestorage.app",
-messagingSenderId:"335775911837",
-appId:"1:335775911837:web:a407029fbad8bfe2b3a974"
+ apiKey:"AIzaSyB7AZhLGZa7kE4qKbmbDBifU9nIwrM3Cgw",
+ authDomain:"moneyhtg-60729.firebaseapp.com",
+ databaseURL:"https://moneyhtg-60729-default-rtdb.firebaseio.com",
+ projectId:"moneyhtg-60729",
+ storageBucket:"moneyhtg-60729.firebasestorage.app",
+ messagingSenderId:"335775911837",
+ appId:"1:335775911837:web:a407029fbad8bfe2b3a974"
 };
 
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 const db=getDatabase(app);
 
-let currentUser=null;
-let currentBalance=0;
-
 const $=id=>document.getElementById(id);
 
+let currentUser=null;
+let currentBalance=0;
+let hasActiveRequest=false;
+
 function message(txt){
-$("message").textContent=txt;
+ $("message").textContent=txt;
 }
 
 function goHome(){
-location.href="index.html";
+ location.href="index.html";
 }
-
 window.goHome=goHome;
 
-onAuthStateChanged(auth,async user=>{
-if(!user){
-$("userEmail").textContent="Ou dwe konekte anvan ou fè retrè.";
-$("submitBtn").disabled=true;
-$("history").textContent="Konekte pou wè istorik ou.";
-return;
+function updateForm(){
+ const blocked=!currentUser || hasActiveRequest;
+ $("submitBtn").disabled=blocked;
+ $("activeNotice").hidden=!hasActiveRequest;
 }
 
-currentUser=user;
-$("userEmail").textContent=user.email;
+function showHistory(data){
+ const box=$("history");
+ box.innerHTML="";
 
-const balanceRef=ref(db,"wallets/"+user.uid+"/balance");
+ if(!data){
+  box.textContent="Ou poko gen okenn demann trete.";
+  return;
+ }
 
-onValue(balanceRef,snap=>{
-const value=snap.val();
-currentBalance=typeof value==="number"?value:0;
-$("balance").textContent=currentBalance.toLocaleString();
-});
+ Object.entries(data).reverse().forEach(([id,item])=>{
+  const div=document.createElement("div");
+  div.className="item";
 
-const historyRef=ref(db,"withdrawals/"+user.uid);
+  const amount=document.createElement("b");
+  amount.textContent=(item.amount||0)+" HTG";
 
-onValue(historyRef,snap=>{
-const data=snap.val();
-$("history").innerHTML="";
+  const details=document.createElement("p");
+  details.textContent=(item.method||"")+" • "+(item.phone||"");
 
-if(!data){
-$("history").textContent="Ou poko fè okenn demann.";
-return;
+  const status=document.createElement("p");
+  status.textContent="Estati: "+(item.status||"Trete");
+
+  const date=document.createElement("small");
+  date.textContent=item.createdAt
+   ?new Date(item.createdAt).toLocaleString()
+   :"";
+
+  div.append(amount,details,status,date);
+  box.appendChild(div);
+ });
 }
 
-Object.entries(data).reverse().forEach(([id,item])=>{
-const div=document.createElement("div");
-div.className="item";
+onAuthStateChanged(auth,user=>{
+ if(!user){
+  currentUser=null;
+  $("userEmail").textContent="Ou dwe konekte anvan ou fè retrè.";
+  $("history").textContent="Konekte pou wè istorik ou.";
+  $("activeDetails").textContent="Konekte pou kontinye.";
+  updateForm();
+  return;
+ }
 
-const amount=document.createElement("b");
-amount.textContent=(item.amount||0)+" HTG";
+ currentUser=user;
+ $("userEmail").textContent=user.email || "Kont konekte";
 
-const details=document.createElement("p");
-details.textContent=(item.method||"")+" • "+(item.phone||"");
+ const balanceRef=ref(db,"wallets/"+user.uid+"/balance");
 
-const status=document.createElement("p");
-status.textContent="Estati: "+(item.status||"An atant");
+ onValue(balanceRef,snap=>{
+  const value=snap.val();
+  currentBalance=typeof value==="number"?value:0;
+  $("balance").textContent=currentBalance.toLocaleString();
+ });
 
-const date=document.createElement("small");
-date.textContent=item.createdAt
-?new Date(item.createdAt).toLocaleString()
-:"";
+ const activeRef=ref(db,"withdrawals/"+user.uid+"/active");
 
-div.append(amount,details,status,date);
-$("history").appendChild(div);
-});
-});
+ onValue(activeRef,snap=>{
+  const item=snap.val();
+  hasActiveRequest=!!item;
+  updateForm();
+
+  if(!item){
+   $("activeDetails").textContent="Ou pa gen demann aktif.";
+   return;
+  }
+
+  $("activeDetails").textContent=
+   item.amount+" HTG • "+item.method+
+   " • "+item.phone+" • Estati: "+item.status;
+ });
+
+ const historyRef=ref(db,"withdrawals/"+user.uid+"/history");
+
+ onValue(historyRef,snap=>{
+  showHistory(snap.val());
+ });
 });
 
 window.sendRequest=async function(){
+ if(!currentUser){
+  message("Ou dwe konekte anvan.");
+  return;
+ }
 
-if(!currentUser){
-message("Ou dwe konekte anvan.");
-return;
-}
+ if(hasActiveRequest){
+  message("Ou deja gen yon demann aktif.");
+  return;
+ }
 
-const amount=Number($("amount").value);
-const method=$("method").value;
-const phone=$("phone").value.trim();
+ const amount=Number($("amount").value);
+ const method=$("method").value;
+ const phone=$("phone").value.trim();
 
-if(!Number.isFinite(amount)||amount<=0){
-message("Antre yon montan ki valab.");
-return;
-}
+ if(!Number.isSafeInteger(amount)||amount<=0){
+  message("Antre yon montan antye ki valab.");
+  return;
+ }
 
-if(amount>currentBalance){
-message("Balans ou pa ase pou demann sa a.");
-return;
-}
+ if(amount>currentBalance){
+  message("Balans ou pa ase pou demann sa a.");
+  return;
+ }
 
-if(!phone||phone.length<8){
-message("Antre yon nimewo telefòn ki valab.");
-return;
-}
+ if(!/^[+]?[0-9 ]{8,15}$/.test(phone)){
+  message("Antre yon nimewo telefòn ki valab.");
+  return;
+ }
 
-const btn=$("submitBtn");
-btn.disabled=true;
-message("Ap voye demann lan...");
+ const btn=$("submitBtn");
+ btn.disabled=true;
+ message("Ap voye demann lan...");
 
-try{
-const balanceCheck=await get(
-ref(db,"wallets/"+currentUser.uid+"/balance")
-);
+ try{
+  const activeRef=ref(db,"withdrawals/"+currentUser.uid+"/active");
+  const existing=await get(activeRef);
 
-const latestBalance=balanceCheck.val();
+  if(existing.exists()){
+   hasActiveRequest=true;
+   updateForm();
+   message("Ou deja gen yon demann aktif. Tann Admin.");
+   return;
+  }
 
-if(typeof latestBalance!=="number"||amount>latestBalance){
-message("Balans lan pa ase. Verifye balans ou ankò.");
-return;
-}
+  const balanceSnap=await get(
+   ref(db,"wallets/"+currentUser.uid+"/balance")
+  );
 
-const requestRef=push(
-ref(db,"withdrawals/"+currentUser.uid)
-);
+  const latestBalance=balanceSnap.val();
 
-await set(requestRef,{
-uid:currentUser.uid,
-email:currentUser.email,
-amount:amount,
-method:method,
-phone:phone,
-status:"An atant",
-createdAt:Date.now()
-});
+  if(typeof latestBalance!=="number"||amount>latestBalance){
+   message("Balans ou pa ase. Verifye balans ou ankò.");
+   return;
+  }
 
-$("amount").value="";
-$("phone").value="";
-message("Demann ou anrejistre! Li ap tann verifikasyon Admin.");
+  await set(activeRef,{
+   uid:currentUser.uid,
+   email:currentUser.email || "",
+   amount:amount,
+   method:method,
+   phone:phone,
+   status:"An atant",
+   createdAt:Date.now()
+  });
 
-}catch(error){
-console.error(error);
-message("Erè: "+error.message);
-}finally{
-btn.disabled=false;
-}
+  $("amount").value="";
+  $("phone").value="";
+  hasActiveRequest=true;
+  updateForm();
+  message("Demann ou anrejistre! Li ap tann verifikasyon Admin.");
+
+ }catch(error){
+  console.error(error);
+  message("Erè Firebase: "+error.message);
+ }finally{
+  updateForm();
+ }
 };
 </script>
 </body>
