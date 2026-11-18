@@ -1,0 +1,229 @@
+
+<!DOCTYPE html>
+<html lang="ht">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MONEYHTG PRO - Withdraw</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:#080d1b;color:white;font-family:Arial}
+.container{max-width:520px;margin:auto}
+.card{background:#121d32;padding:20px;border-radius:16px;margin-bottom:18px;border:1px solid #253652}
+h2{color:#27e6a0}
+.balance{background:linear-gradient(135deg,#087b63,#123e70);padding:20px;border-radius:15px;font-size:25px;font-weight:bold}
+input,select{width:100%;padding:14px;margin:9px 0;background:#081326;color:white;border:1px solid #354968;border-radius:9px;font-size:15px}
+button{width:100%;padding:14px;border:0;border-radius:10px;background:#16c995;color:#061a17;font-weight:bold;margin-top:10px;font-size:15px}
+.secondary{background:#263a57;color:white}
+.small{color:#aab8cc;font-size:13px}
+.item{background:#192944;padding:12px;border-radius:10px;margin-top:10px;font-size:14px}
+#message{color:#ffcc70;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="card">
+<h2>💰 MONEYHTG PRO</h2>
+<p>Demann retrè</p>
+<p class="small" id="userEmail">Verifikasyon kont...</p>
+<button class="secondary" onclick="goHome()">Retounen lakay</button>
+</div>
+
+<div class="balance">
+<div class="small">Balans disponib</div>
+<div><span id="balance">0</span> HTG</div>
+</div>
+
+<div class="card">
+<h2>📤 Fè retrè</h2>
+
+<label>Montan (HTG)</label>
+<input id="amount" type="number" min="1" placeholder="Antre montan an">
+
+<label>Metòd peman</label>
+<select id="method">
+<option value="MonCash">MonCash</option>
+<option value="NatCash">NatCash</option>
+</select>
+
+<label>Nimewo telefòn</label>
+<input id="phone" type="tel" placeholder="Antre nimewo telefòn ou">
+
+<button id="submitBtn" onclick="sendRequest()">Voye demann retrè</button>
+<div id="message"></div>
+<p class="small">Demann ou ap tann verifikasyon Admin. Demann lan pa vle di peman an deja fèt.</p>
+</div>
+
+<div class="card">
+<h2>📋 Istorik retrè</h2>
+<div id="history">Ap chaje...</div>
+</div>
+
+</div>
+
+<script type="module">
+import {initializeApp}
+from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+
+import {
+getAuth,onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+
+import {
+getDatabase,ref,get,push,set,onValue
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-database.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyB7AZhLGZa7kE4qKbmbDBifU9nIwrM3Cgw",
+authDomain:"moneyhtg-60729.firebaseapp.com",
+databaseURL:"https://moneyhtg-60729-default-rtdb.firebaseio.com",
+projectId:"moneyhtg-60729",
+storageBucket:"moneyhtg-60729.firebasestorage.app",
+messagingSenderId:"335775911837",
+appId:"1:335775911837:web:a407029fbad8bfe2b3a974"
+};
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getDatabase(app);
+
+let currentUser=null;
+let currentBalance=0;
+
+const $=id=>document.getElementById(id);
+
+function message(txt){
+$("message").textContent=txt;
+}
+
+function goHome(){
+location.href="index.html";
+}
+
+window.goHome=goHome;
+
+onAuthStateChanged(auth,async user=>{
+if(!user){
+$("userEmail").textContent="Ou dwe konekte anvan ou fè retrè.";
+$("submitBtn").disabled=true;
+$("history").textContent="Konekte pou wè istorik ou.";
+return;
+}
+
+currentUser=user;
+$("userEmail").textContent=user.email;
+
+const balanceRef=ref(db,"wallets/"+user.uid+"/balance");
+
+onValue(balanceRef,snap=>{
+const value=snap.val();
+currentBalance=typeof value==="number"?value:0;
+$("balance").textContent=currentBalance.toLocaleString();
+});
+
+const historyRef=ref(db,"withdrawals/"+user.uid);
+
+onValue(historyRef,snap=>{
+const data=snap.val();
+$("history").innerHTML="";
+
+if(!data){
+$("history").textContent="Ou poko fè okenn demann.";
+return;
+}
+
+Object.entries(data).reverse().forEach(([id,item])=>{
+const div=document.createElement("div");
+div.className="item";
+
+const amount=document.createElement("b");
+amount.textContent=(item.amount||0)+" HTG";
+
+const details=document.createElement("p");
+details.textContent=(item.method||"")+" • "+(item.phone||"");
+
+const status=document.createElement("p");
+status.textContent="Estati: "+(item.status||"An atant");
+
+const date=document.createElement("small");
+date.textContent=item.createdAt
+?new Date(item.createdAt).toLocaleString()
+:"";
+
+div.append(amount,details,status,date);
+$("history").appendChild(div);
+});
+});
+});
+
+window.sendRequest=async function(){
+
+if(!currentUser){
+message("Ou dwe konekte anvan.");
+return;
+}
+
+const amount=Number($("amount").value);
+const method=$("method").value;
+const phone=$("phone").value.trim();
+
+if(!Number.isFinite(amount)||amount<=0){
+message("Antre yon montan ki valab.");
+return;
+}
+
+if(amount>currentBalance){
+message("Balans ou pa ase pou demann sa a.");
+return;
+}
+
+if(!phone||phone.length<8){
+message("Antre yon nimewo telefòn ki valab.");
+return;
+}
+
+const btn=$("submitBtn");
+btn.disabled=true;
+message("Ap voye demann lan...");
+
+try{
+const balanceCheck=await get(
+ref(db,"wallets/"+currentUser.uid+"/balance")
+);
+
+const latestBalance=balanceCheck.val();
+
+if(typeof latestBalance!=="number"||amount>latestBalance){
+message("Balans lan pa ase. Verifye balans ou ankò.");
+return;
+}
+
+const requestRef=push(
+ref(db,"withdrawals/"+currentUser.uid)
+);
+
+await set(requestRef,{
+uid:currentUser.uid,
+email:currentUser.email,
+amount:amount,
+method:method,
+phone:phone,
+status:"An atant",
+createdAt:Date.now()
+});
+
+$("amount").value="";
+$("phone").value="";
+message("Demann ou anrejistre! Li ap tann verifikasyon Admin.");
+
+}catch(error){
+console.error(error);
+message("Erè: "+error.message);
+}finally{
+btn.disabled=false;
+}
+};
+</script>
+</body>
+</html>
