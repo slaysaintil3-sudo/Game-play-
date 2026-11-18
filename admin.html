@@ -5,30 +5,46 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MONEYHTG PRO - Admin</title>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:18px;background:#080d1b;color:white;font-family:Arial}
+body{
+ margin:0;padding:18px;background:#080d1b;
+ color:white;font-family:Arial,sans-serif
+}
 .container{max-width:700px;margin:auto}
-.card{background:#121d32;padding:18px;border-radius:15px;margin-bottom:16px;border:1px solid #263956}
+.card{
+ background:#121d32;padding:18px;border-radius:15px;
+ margin-bottom:16px;border:1px solid #263956
+}
 h2{color:#27e6a0}
-input{width:100%;padding:13px;margin:8px 0;background:#081326;color:white;border:1px solid #354968;border-radius:9px}
-button{width:100%;padding:13px;border:0;border-radius:9px;margin-top:8px;background:#16c995;color:#061a17;font-weight:bold}
+button{
+ width:100%;padding:13px;border:0;border-radius:9px;
+ margin-top:8px;background:#16c995;color:#061a17;
+ font-weight:bold;font-size:14px
+}
 .red{background:#b83246;color:white}
 .blue{background:#263a57;color:white}
-.item{background:#1a2942;padding:14px;border-radius:10px;margin-top:12px}
+.item{
+ background:#1a2942;padding:14px;
+ border-radius:10px;margin-top:12px
+}
 .small{font-size:13px;color:#aab8cc}
 .status{color:#ffcc70;font-weight:bold}
-#message{color:#ffcc70}
+#message{color:#ffcc70;overflow-wrap:anywhere}
 </style>
 </head>
+
 <body>
 <div class="container">
 
 <div class="card">
 <h2>🛡️ MONEYHTG PRO ADMIN</h2>
-<p class="small">Jesyon demann retrè MonCash ak NatCash</p>
+<p class="small">Jesyon demann MonCash ak NatCash</p>
 <p id="adminEmail">Verifikasyon kont...</p>
-<button class="blue" onclick="location.href='index.html'">Retounen lakay</button>
+<button class="blue" onclick="location.href='index.html'">
+Retounen lakay
+</button>
 <button class="red" onclick="logout()">Dekonekte</button>
 </div>
 
@@ -46,6 +62,7 @@ button{width:100%;padding:13px;border:0;border-radius:9px;margin-top:8px;backgro
 </div>
 
 <script type="module">
+
 import {initializeApp}
 from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 
@@ -54,7 +71,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
 
 import {
- getDatabase,ref,get,set,remove,update
+ getDatabase,ref,get,set,remove,runTransaction
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-database.js";
 
 const firebaseConfig={
@@ -76,17 +93,68 @@ const db=getDatabase(app);
 const $=id=>document.getElementById(id);
 
 let admin=null;
-let requests={};
+let busy=false;
 
 function msg(text){
  $("message").textContent=text;
 }
 
-function safeText(value){
- return String(value??"");
+function showItem(box,item,uid,id,active){
+
+ const div=document.createElement("div");
+ div.className="item";
+
+ const title=document.createElement("h3");
+ title.textContent=(item.amount||0)+" HTG";
+
+ const details=document.createElement("p");
+ details.style.whiteSpace="pre-line";
+ details.textContent=
+  "Itilizatè: "+uid+
+  "\nEmail: "+(item.email||"")+
+  "\nMetòd: "+(item.method||"")+
+  "\nTelefòn: "+(item.phone||"")+
+  "\nDat: "+(item.createdAt?
+   new Date(item.createdAt).toLocaleString():"");
+
+ const status=document.createElement("p");
+ status.className="status";
+ status.textContent="Estati: "+(item.status||"");
+
+ div.append(title,details,status);
+
+ if(active){
+
+  const copy=document.createElement("button");
+  copy.className="blue";
+  copy.textContent="Kopye nimewo telefòn";
+
+  copy.onclick=async()=>{
+   try{
+    await navigator.clipboard.writeText(item.phone||"");
+    msg("Nimewo a kopye.");
+   }catch(e){
+    msg("Pa kapab kopye nimewo a.");
+   }
+  };
+
+  const pay=document.createElement("button");
+  pay.textContent="Konfime peman + dedwi balans";
+  pay.onclick=()=>finishRequest(uid,"Peye");
+
+  const reject=document.createElement("button");
+  reject.className="red";
+  reject.textContent="Refize demann";
+  reject.onclick=()=>finishRequest(uid,"Refize");
+
+  div.append(copy,pay,reject);
+ }
+
+ box.appendChild(div);
 }
 
 onAuthStateChanged(auth,async user=>{
+
  if(!user){
   location.href="index.html";
   return;
@@ -105,11 +173,12 @@ onAuthStateChanged(auth,async user=>{
 });
 
 async function loadRequests(){
- try{
-  const usersSnap=await get(ref(db,"withdrawals"));
-  const all=usersSnap.val()||{};
 
-  requests={};
+ try{
+
+  const snap=await get(ref(db,"withdrawals"));
+  const all=snap.val()||{};
+
   const pending=$("pending");
   const history=$("history");
 
@@ -120,103 +189,54 @@ async function loadRequests(){
   let historyCount=0;
 
   Object.entries(all).forEach(([uid,data])=>{
+
    if(data.active){
-    requests[uid]=data.active;
-    renderRequest(pending,uid,data.active,true);
+    showItem(pending,data.active,uid,"active",true);
     pendingCount++;
    }
 
    if(data.history){
     Object.entries(data.history).forEach(([id,item])=>{
-     renderHistory(history,uid,id,item);
+     showItem(history,item,uid,id,false);
      historyCount++;
     });
    }
   });
 
-  if(!pendingCount) pending.textContent="Pa gen demann an atant.";
-  if(!historyCount) history.textContent="Pa gen istorik pou kounye a.";
+  if(!pendingCount)
+   pending.textContent="Pa gen demann an atant.";
+
+  if(!historyCount)
+   history.textContent="Pa gen istorik pou kounye a.";
 
  }catch(error){
   msg("Erè Firebase: "+error.message);
  }
 }
 
-function renderRequest(box,uid,item,isActive){
- const div=document.createElement("div");
- div.className="item";
-
- const title=document.createElement("h3");
- title.textContent=item.amount+" HTG";
-
- const details=document.createElement("p");
- details.textContent=
-  "Itilizatè: "+uid+
-  "\nEmail: "+safeText(item.email)+
-  "\nMetòd: "+safeText(item.method)+
-  "\nTelefòn: "+safeText(item.phone);
-
- details.style.whiteSpace="pre-line";
-
- const status=document.createElement("p");
- status.className="status";
- status.textContent="Estati: "+safeText(item.status);
-
- div.append(title,details,status);
-
- const copy=document.createElement("button");
- copy.className="blue";
- copy.textContent="Kopye nimewo telefòn";
- copy.onclick=()=>navigator.clipboard.writeText(safeText(item.phone));
-
- const paid=document.createElement("button");
- paid.textContent="Make kòm PEYE";
- paid.onclick=()=>finishRequest(uid,"Peye");
-
- const reject=document.createElement("button");
- reject.className="red";
- reject.textContent="Refize demann";
- reject.onclick=()=>finishRequest(uid,"Refize");
-
- if(isActive){
-  div.append(copy,paid,reject);
- }
- box.appendChild(div);
-}
-
-function renderHistory(box,uid,id,item){
- const div=document.createElement("div");
- div.className="item";
-
- const title=document.createElement("b");
- title.textContent=(item.amount||0)+" HTG";
-
- const details=document.createElement("p");
- details.textContent=
-  safeText(item.method)+" • "+safeText(item.phone)+
-  " • "+safeText(item.status);
-
- div.append(title,details);
- box.appendChild(div);
-}
-
 async function finishRequest(uid,newStatus){
- if(!admin||admin.uid!==ADMIN_UID)return;
+
+ if(!admin||admin.uid!==ADMIN_UID||busy)return;
 
  const confirmed=confirm(
   newStatus==="Peye"
-  ?"Èske ou deja voye lajan an epi ou vle make demann lan kòm PEYE?"
-  :"Èske ou vle refize demann sa a?"
+  ? "Èske ou deja voye lajan an sou "+(requestsMethod(uid))+
+    "? Aksyon sa a pral dedwi balans lan yon sèl fwa."
+  : "Èske ou sèten ou vle refize demann sa a?"
  );
 
  if(!confirmed)return;
 
+ busy=true;
+ msg("Ap trete demann lan...");
+
  try{
+
   const activeRef=ref(db,"withdrawals/"+uid+"/active");
   const snap=await get(activeRef);
 
   if(!snap.exists()){
-   msg("Demann sa a pa egziste ankò.");
+   msg("Demann lan pa egziste ankò.");
    await loadRequests();
    return;
   }
@@ -228,49 +248,130 @@ async function finishRequest(uid,newStatus){
    return;
   }
 
-  if(newStatus==="Peye"){
-   const balanceRef=ref(db,"wallets/"+uid+"/balance");
-   const balanceSnap=await get(balanceRef);
-   const balance=balanceSnap.val();
+  const requestId=String(item.createdAt);
 
-   if(typeof balance!=="number"||balance<item.amount){
-    msg("Balans itilizatè a pa ase. Pa make peman an kòm fèt.");
-    return;
-   }
-
-   // Seksyon sa a poko dedwi lajan an otomatikman.
-   // Pa itilize bouton Peye a pou peman reyèl jiskaske
-   // operasyon tranzaksyon sekirize sou backend la pare.
-   msg("Peman pa aktive: nou dwe mete dediksyon sekirize a an plas anvan.");
+  if(!item.createdAt||!Number.isSafeInteger(item.amount)||item.amount<=0){
+   msg("Done demann lan pa valab.");
    return;
   }
 
+  // Peman: dedwi balans lan avèk yon tranzaksyon atomik.
+  if(newStatus==="Peye"){
+
+   const walletRef=ref(db,"wallets/"+uid);
+   let resultReason="";
+
+   const result=await runTransaction(walletRef,current=>{
+
+    if(!current||typeof current.balance!=="number"){
+     resultReason="missing";
+     return;
+    }
+
+    const processed=current.processedWithdrawals||{};
+
+    // Si ID sa a deja anrejistre, pa dedwi ankò.
+    if(processed[requestId]===true){
+     resultReason="already";
+     return;
+    }
+
+    if(current.balance<item.amount){
+     resultReason="insufficient";
+     return;
+    }
+
+    current.balance=Math.round(
+     (current.balance-item.amount)*100
+    )/100;
+
+    current.processedWithdrawals=processed;
+    current.processedWithdrawals[requestId]=true;
+
+    resultReason="deducted";
+    return current;
+   });
+
+   if(!result.committed){
+
+    const latest=result.snapshot.val();
+
+    if(!latest ||
+       !latest.processedWithdrawals ||
+       latest.processedWithdrawals[requestId]!==true){
+
+     if(resultReason==="insufficient"){
+      msg("Balans lan pa ase. Pa voye peman an.");
+     }else{
+      msg("Dediksyon an pa fèt. Verifye balans lan.");
+     }
+     return;
+    }
+
+    // Marker la deja egziste: dediksyon an te fèt.
+    msg("Dediksyon an te deja fèt. N ap fini istorik la...");
+   }
+
+  }
+
+  // ID istorik la rete menm pou evite doublon.
   const historyRef=ref(
-   db,"withdrawals/"+uid+"/history/"+Date.now()
+   db,"withdrawals/"+uid+"/history/"+requestId
   );
 
-  await set(historyRef,{
-   ...item,
-   status:newStatus,
-   processedAt:Date.now(),
-   processedBy:admin.uid
-  });
+  const historySnap=await get(historyRef);
 
+  if(!historySnap.exists()){
+
+   await set(historyRef,{
+    ...item,
+    status:newStatus,
+    processedAt:Date.now(),
+    processedBy:admin.uid,
+    requestId:requestId
+   });
+
+  }else{
+
+   // Si operasyon an te koupe anvan, pa kreye yon lòt antre.
+   if(historySnap.val().status!==newStatus){
+    msg("Gen yon diferans nan istorik la. Kontakte Admin teknik.");
+    return;
+   }
+  }
+
+  // Libere plas demann aktif la sèlman apre istorik la sove.
   await remove(activeRef);
 
-  msg("Demann lan trete avèk siksè.");
+  msg(
+   newStatus==="Peye"
+   ?"Peman an anrejistre, balans lan dedwi yon sèl fwa."
+   :"Demann lan refize. Pa gen lajan ki dedwi."
+  );
+
   await loadRequests();
 
  }catch(error){
+
   console.error(error);
-  msg("Erè: "+error.message);
+  msg("Erè Firebase: "+error.message+
+      ". Verifye istorik ak balans lan anvan ou rekòmanse.");
+
+ }finally{
+  busy=false;
  }
 }
 
-window.logout=async function(){
+// Jwenn metòd demann lan pou mesaj konfimasyon an.
+function requestsMethod(uid){
+ return "MonCash/NatCash";
+}
+
+window.logout=async()=>{
  await signOut(auth);
  location.href="index.html";
 };
+
 </script>
 </body>
 </html>
