@@ -5,48 +5,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MONEYHTG PRO - Withdraw</title>
-
 <style>
 *{box-sizing:border-box}
-body{
- margin:0;padding:20px;background:#080d1b;
- color:white;font-family:Arial,sans-serif
-}
+body{margin:0;padding:20px;background:#080d1b;color:white;font-family:Arial}
 .container{max-width:520px;margin:auto}
-.card{
- background:#121d32;padding:20px;border-radius:16px;
- margin-bottom:18px;border:1px solid #253652
-}
+.card{background:#121d32;padding:20px;border-radius:16px;margin-bottom:18px;border:1px solid #253652}
 h2{color:#27e6a0}
-.balance{
- background:linear-gradient(135deg,#087b63,#123e70);
- padding:20px;border-radius:15px;font-size:25px;font-weight:bold
-}
-input,select{
- width:100%;padding:14px;margin:9px 0;background:#081326;
- color:white;border:1px solid #354968;border-radius:9px;
- font-size:15px
-}
-button{
- width:100%;padding:14px;border:0;border-radius:10px;
- background:#16c995;color:#061a17;font-weight:bold;
- margin-top:10px;font-size:15px
-}
+.balance{background:linear-gradient(135deg,#087b63,#123e70);padding:20px;border-radius:15px;font-size:25px;font-weight:bold}
+input,select{width:100%;padding:14px;margin:9px 0;background:#081326;color:white;border:1px solid #354968;border-radius:9px;font-size:15px}
+button{width:100%;padding:14px;border:0;border-radius:10px;background:#16c995;color:#061a17;font-weight:bold;margin-top:10px;font-size:15px}
 button:disabled{opacity:.45}
 .secondary{background:#263a57;color:white}
 .small{color:#aab8cc;font-size:13px}
-.item{
- background:#192944;padding:12px;border-radius:10px;
- margin-top:10px;font-size:14px
-}
+.item{background:#192944;padding:12px;border-radius:10px;margin-top:10px;font-size:14px}
 #message{color:#ffcc70;margin-top:12px}
-.notice{
- background:#382b16;color:#ffdb91;padding:12px;
- border-radius:10px;margin-top:12px;font-size:14px
-}
+.notice{background:#382b16;color:#ffdb91;padding:12px;border-radius:10px;margin-top:12px;font-size:14px}
 </style>
 </head>
-
 <body>
 <div class="container">
 
@@ -64,14 +39,12 @@ button:disabled{opacity:.45}
 
 <div class="card">
 <h2>📤 Fè retrè</h2>
-
 <div id="activeNotice" class="notice" hidden>
-Ou deja gen yon demann aktif. Tann Admin fin trete li anvan ou fè yon lòt demann.
+Ou deja gen yon demann aktif. Tann Admin fin trete li.
 </div>
 
 <label>Montan (HTG)</label>
-<input id="amount" type="number" min="1" step="1"
-placeholder="Antre montan an">
+<input id="amount" type="number" min="1" step="1" placeholder="Antre montan an">
 
 <label>Metòd peman</label>
 <select id="method">
@@ -82,18 +55,13 @@ placeholder="Antre montan an">
 <label>Nimewo telefòn</label>
 <input id="phone" type="tel" placeholder="Antre nimewo telefòn ou">
 
-<button id="submitBtn" onclick="sendRequest">
-Voye demann retrè
-</button>
-
+<button id="submitBtn" onclick="sendRequest()">Voye demann retrè</button>
 <div id="message"></div>
-<p class="small">
-Demann ou ap tann verifikasyon Admin. Demann lan pa vle di peman an deja fèt.
-</p>
+<p class="small">Demann lan dwe verifye pa Admin. Li pa vle di peman an deja fèt.</p>
 </div>
 
 <div class="card">
-<h2>📋 Demann aktif</h2>
+<h2>📌 Demann aktif</h2>
 <div id="activeDetails" class="small">Ap chaje...</div>
 </div>
 
@@ -105,16 +73,9 @@ Demann ou ap tann verifikasyon Admin. Demann lan pa vle di peman an deja fèt.
 </div>
 
 <script type="module">
-import {initializeApp}
-from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
-
-import {
- getAuth,onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
-
-import {
- getDatabase,ref,get,set,onValue
-} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-database.js";
+import {initializeApp} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+import {getAuth,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+import {getDatabase,ref,get,set,onValue} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-database.js";
 
 const firebaseConfig={
  apiKey:"AIzaSyB7AZhLGZa7kE4qKbmbDBifU9nIwrM3Cgw",
@@ -129,102 +90,85 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 const db=getDatabase(app);
-
 const $=id=>document.getElementById(id);
 
 let currentUser=null;
 let currentBalance=0;
 let hasActiveRequest=false;
 
-function message(txt){
- $("message").textContent=txt;
-}
+function message(txt){$("message").textContent=txt;}
 
-function goHome(){
- location.href="index.html";
-}
-window.goHome=goHome;
+window.goHome=()=>location.href="index.html";
 
 function updateForm(){
- const blocked=!currentUser || hasActiveRequest;
- $("submitBtn").disabled=blocked;
+ $("submitBtn").disabled=!currentUser||hasActiveRequest;
  $("activeNotice").hidden=!hasActiveRequest;
 }
 
-function showHistory(data){
- const box=$("history");
- box.innerHTML="";
+function showItem(container,item){
+ const div=document.createElement("div");
+ div.className="item";
 
- if(!data){
-  box.textContent="Ou poko gen okenn demann trete.";
-  return;
- }
+ const amount=document.createElement("b");
+ amount.textContent=(item.amount||0)+" HTG";
 
- Object.entries(data).reverse().forEach(([id,item])=>{
-  const div=document.createElement("div");
-  div.className="item";
+ const details=document.createElement("p");
+ details.textContent=(item.method||"")+" • "+(item.phone||"");
 
-  const amount=document.createElement("b");
-  amount.textContent=(item.amount||0)+" HTG";
+ const status=document.createElement("p");
+ status.textContent="Estati: "+(item.status||"An atant");
 
-  const details=document.createElement("p");
-  details.textContent=(item.method||"")+" • "+(item.phone||"");
+ const date=document.createElement("small");
+ date.textContent=item.createdAt
+  ?new Date(item.createdAt).toLocaleString():"";
 
-  const status=document.createElement("p");
-  status.textContent="Estati: "+(item.status||"Trete");
-
-  const date=document.createElement("small");
-  date.textContent=item.createdAt
-   ?new Date(item.createdAt).toLocaleString()
-   :"";
-
-  div.append(amount,details,status,date);
-  box.appendChild(div);
- });
+ div.append(amount,details,status,date);
+ container.appendChild(div);
 }
 
 onAuthStateChanged(auth,user=>{
  if(!user){
   currentUser=null;
   $("userEmail").textContent="Ou dwe konekte anvan ou fè retrè.";
-  $("history").textContent="Konekte pou wè istorik ou.";
   $("activeDetails").textContent="Konekte pou kontinye.";
+  $("history").textContent="Konekte pou wè istorik ou.";
   updateForm();
   return;
  }
 
  currentUser=user;
- $("userEmail").textContent=user.email || "Kont konekte";
+ $("userEmail").textContent=user.email||"Kont konekte";
 
- const balanceRef=ref(db,"wallets/"+user.uid+"/balance");
+ const base="withdrawals/"+user.uid;
 
- onValue(balanceRef,snap=>{
+ onValue(ref(db,"wallets/"+user.uid+"/balance"),snap=>{
   const value=snap.val();
   currentBalance=typeof value==="number"?value:0;
   $("balance").textContent=currentBalance.toLocaleString();
  });
 
- const activeRef=ref(db,"withdrawals/"+user.uid+"/active");
-
- onValue(activeRef,snap=>{
+ onValue(ref(db,base+"/active"),snap=>{
   const item=snap.val();
   hasActiveRequest=!!item;
   updateForm();
 
-  if(!item){
-   $("activeDetails").textContent="Ou pa gen demann aktif.";
+  const box=$("activeDetails");
+  box.innerHTML="";
+  if(item) showItem(box,item);
+  else box.textContent="Ou pa gen demann aktif.";
+ });
+
+ onValue(ref(db,base+"/history"),snap=>{
+  const data=snap.val();
+  const box=$("history");
+  box.innerHTML="";
+
+  if(!data){
+   box.textContent="Ou poko gen okenn demann trete.";
    return;
   }
 
-  $("activeDetails").textContent=
-   item.amount+" HTG • "+item.method+
-   " • "+item.phone+" • Estati: "+item.status;
- });
-
- const historyRef=ref(db,"withdrawals/"+user.uid+"/history");
-
- onValue(historyRef,snap=>{
-  showHistory(snap.val());
+  Object.values(data).reverse().forEach(item=>showItem(box,item));
  });
 });
 
@@ -249,7 +193,7 @@ window.sendRequest=async function(){
  }
 
  if(amount>currentBalance){
-  message("Balans ou pa ase pou demann sa a.");
+  message("Balans ou pa ase.");
   return;
  }
 
@@ -269,14 +213,11 @@ window.sendRequest=async function(){
   if(existing.exists()){
    hasActiveRequest=true;
    updateForm();
-   message("Ou deja gen yon demann aktif. Tann Admin.");
+   message("Ou deja gen yon demann aktif.");
    return;
   }
 
-  const balanceSnap=await get(
-   ref(db,"wallets/"+currentUser.uid+"/balance")
-  );
-
+  const balanceSnap=await get(ref(db,"wallets/"+currentUser.uid+"/balance"));
   const latestBalance=balanceSnap.val();
 
   if(typeof latestBalance!=="number"||amount>latestBalance){
@@ -286,7 +227,7 @@ window.sendRequest=async function(){
 
   await set(activeRef,{
    uid:currentUser.uid,
-   email:currentUser.email || "",
+   email:currentUser.email||"",
    amount:amount,
    method:method,
    phone:phone,
