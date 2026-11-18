@@ -1,0 +1,305 @@
+
+<!DOCTYPE html>
+<html lang="ht">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080d1b">
+<title>MONEYHTG PRO</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#080d1b;color:#fff;
+ font-family:Arial,sans-serif;padding:18px;
+}
+.container{max-width:650px;margin:auto}
+header{
+ display:flex;justify-content:space-between;
+ align-items:center;margin-bottom:25px;
+}
+.logo{font-size:23px;font-weight:bold;color:#27e6a0}
+.status{font-size:12px;color:#27e6a0}
+.card{
+ background:#121d32;border:1px solid #253652;
+ border-radius:17px;padding:20px;margin-bottom:17px;
+}
+h2{margin-top:0}
+.balance{
+ background:linear-gradient(135deg,#087b63,#123e70);
+ border-radius:18px;padding:23px;margin-bottom:18px;
+}
+.amount{font-size:34px;font-weight:bold;margin:12px 0}
+button{
+ border:0;border-radius:10px;padding:13px;
+ background:#16c995;color:#061a17;
+ font-weight:bold;cursor:pointer;width:100%;
+ margin-top:10px;font-size:15px;
+}
+button.secondary{background:#263a57;color:white}
+button:disabled{opacity:.5}
+input{
+ width:100%;padding:14px;margin:7px 0;
+ background:#081326;border:1px solid #354968;
+ color:white;border-radius:9px;font-size:15px;
+}
+.grid{
+ display:grid;grid-template-columns:1fr 1fr;gap:12px;
+}
+.game{
+ background:#192944;border-radius:13px;
+ padding:18px;text-align:center;
+}
+.game b{display:block;margin:8px 0}
+.small{font-size:12px;color:#aab8cc}
+.hidden{display:none}
+#message{font-size:13px;margin-top:10px;color:#ffcc70}
+footer{text-align:center;color:#8291a7;font-size:12px;margin:25px}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<header>
+ <div class="logo">💰 MONEYHTG PRO</div>
+ <div class="status" id="connection">● Koneksyon...</div>
+</header>
+
+<section id="authSection" class="card">
+ <h2>Byenvini sou MoneyHTG PRO</h2>
+ <p class="small">Konekte oswa kreye kont ou pou antre sou platfòm lan.</p>
+
+ <div id="registerFields">
+  <input id="username" placeholder="Non itilizatè">
+ </div>
+
+ <input id="email" type="email" placeholder="Adrès Email">
+ <input id="password" type="password" placeholder="Modpas">
+
+ <button id="registerBtn" onclick="register()">Kreye kont</button>
+ <button class="secondary" onclick="login()">Konekte</button>
+ <div id="message"></div>
+</section>
+
+<main id="appSection" class="hidden">
+
+ <section class="card">
+  <h2>Bonjou, <span id="userName">Itilizatè</span> 👋</h2>
+  <p class="small" id="userEmail"></p>
+  <button class="secondary" onclick="logout()">Dekonekte</button>
+ </section>
+
+ <section class="balance">
+  <div>💰 Balans ou</div>
+  <div class="amount"><span id="balance">0</span> HTG</div>
+  <div class="small">MoneyHTG PRO Wallet</div>
+ </section>
+
+ <section class="card">
+  <h2>🎮 Gaming Center</h2>
+  <p class="small">Chwazi aktivite ou vle jwe.</p>
+
+  <div class="grid">
+   <div class="game">
+    <div style="font-size:30px">⭕</div>
+    <b>Gomoku 15×15</b>
+    <span class="small">Jwe kont IA</span>
+    <button onclick="openGame('morpion.html')">Jwe kounye a</button>
+   </div>
+
+   <div class="game">
+    <div style="font-size:30px">🧠</div>
+    <b>Quiz</b>
+    <span class="small">Jwèt kesyon</span>
+    <button onclick="comingSoon()">Byento</button>
+   </div>
+
+   <div class="game">
+    <div style="font-size:30px">🚀</div>
+    <b>Race</b>
+    <span class="small">Jwèt kous</span>
+    <button onclick="comingSoon()">Byento</button>
+   </div>
+
+   <div class="game">
+    <div style="font-size:30px">🏆</div>
+    <b>Tournaments</b>
+    <span class="small">Konpetisyon</span>
+    <button onclick="comingSoon()">Byento</button>
+   </div>
+  </div>
+ </section>
+
+ <section class="card">
+  <h2>👤 Kont mwen</h2>
+  <p>Non: <span id="profileName">---</span></p>
+  <p>Email: <span id="profileEmail">---</span></p>
+  <p class="small">Kont ou konekte ak Firebase.</p>
+ </section>
+
+</main>
+
+<footer>
+ MONEYHTG PRO © 2026<br>
+ Yon platfòm pou kominote a.
+</footer>
+
+</div>
+
+<script type="module">
+
+import { initializeApp }
+from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+
+import {
+ getAuth,
+ createUserWithEmailAndPassword,
+ signInWithEmailAndPassword,
+ signOut,
+ onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+
+import {
+ getDatabase,
+ ref,
+ set,
+ onValue,
+ get
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-database.js";
+
+const firebaseConfig = {
+ apiKey: "REPLACE_WITH_YOUR_FIREBASE_API_KEY",
+ authDomain: "moneyhtg-60729.firebaseapp.com",
+ databaseURL: "https://moneyhtg-60729-default-rtdb.firebaseio.com",
+ projectId: "moneyhtg-60729",
+ storageBucket: "moneyhtg-60729.firebasestorage.app",
+ messagingSenderId: "335775911837",
+ appId: "1:335775911837:web:a407029fbad8bfe2b3a974"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+const $ = id => document.getElementById(id);
+
+function message(text){
+ $("message").textContent = text;
+}
+
+$("connection").textContent = "● Firebase konekte";
+
+window.register = async function(){
+ const username = $("username").value.trim();
+ const email = $("email").value.trim();
+ const password = $("password").value;
+
+ if(!username || !email || !password){
+  message("Ranpli tout chan yo.");
+  return;
+ }
+
+ if(password.length < 6){
+  message("Modpas la dwe gen omwen 6 karaktè.");
+  return;
+ }
+
+ try{
+  const result = await createUserWithEmailAndPassword(
+   auth,email,password
+  );
+
+  await set(ref(db,"users/"+result.user.uid),{
+   username:username,
+   email:email,
+   createdAt:Date.now()
+  });
+
+  message("Kont ou kreye avèk siksè!");
+
+ }catch(error){
+  message(error.message);
+ }
+};
+
+window.login = async function(){
+ const email = $("email").value.trim();
+ const password = $("password").value;
+
+ if(!email || !password){
+  message("Antre email ak modpas ou.");
+  return;
+ }
+
+ try{
+  await signInWithEmailAndPassword(auth,email,password);
+  message("Koneksyon reyisi!");
+ }catch(error){
+  message(error.message);
+ }
+};
+
+window.logout = async function(){
+ await signOut(auth);
+};
+
+window.openGame = function(page){
+ window.location.href = page;
+};
+
+window.comingSoon = function(){
+ alert("Jwèt sa ap disponib byento!");
+};
+
+onAuthStateChanged(auth, async user => {
+
+ if(user){
+  $("authSection").classList.add("hidden");
+  $("appSection").classList.remove("hidden");
+
+  $("userEmail").textContent = user.email;
+  $("profileEmail").textContent = user.email;
+
+  const profileRef = ref(db,"users/"+user.uid);
+
+  try{
+   const snapshot = await get(profileRef);
+
+   if(!snapshot.exists()){
+    await set(profileRef,{
+     username:user.email.split("@")[0],
+     email:user.email,
+     createdAt:Date.now()
+    });
+   }
+
+   onValue(profileRef,snap=>{
+    const data = snap.val() || {};
+    const name = data.username || "Itilizatè";
+
+    $("userName").textContent = name;
+    $("profileName").textContent = name;
+   });
+
+   onValue(ref(db,"wallets/"+user.uid+"/balance"),snap=>{
+    const value = snap.val();
+    $("balance").textContent =
+     typeof value === "number" ? value.toLocaleString() : "0";
+   });
+
+  }catch(error){
+   console.error(error);
+   alert("Pwoblèm pou chaje profil la: "+error.message);
+  }
+
+ }else{
+  $("appSection").classList.add("hidden");
+  $("authSection").classList.remove("hidden");
+ }
+});
+
+</script>
+</body>
+    </html>
+    
